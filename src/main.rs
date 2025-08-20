@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use dialoguer::{Confirm, FuzzySelect, Input};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::fs;
@@ -11,31 +12,155 @@ use walkdir::WalkDir;
 const ASCII_CHARS: &str = " .`'^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
 #[derive(Parser, Debug)]
-#[command(version, about = "High-performance video/image to ASCII frame generator.")]
+#[command(version, about = "Interactive video/image to ASCII frame generator.")]
 struct Args {
     /// Input video file or directory of images
-    #[arg(short, long)]
-    input: PathBuf,
+    input: Option<PathBuf>,
 
-    /// Output directory (will be created if missing)
-    #[arg(short, long)]
-    out: PathBuf,
+    /// Output directory for the generated files
+    out: Option<PathBuf>,
 
     /// Target columns for scaling (width)
-    #[arg(long, default_value_t = 800)]
-    columns: u32,
+    #[arg(long)]
+    columns: Option<u32>,
 
     /// Frames per second when extracting from video
-    #[arg(long, default_value_t = 30)]
-    fps: u32,
+    #[arg(long)]
+    fps: Option<u32>,
 
-    /// Font aspect ratio (character width:height). 0.5->tall, 1.0->square
-    #[arg(long, default_value_t = 0.7)]
-    font_ratio: f32,
+    /// Font aspect ratio (character width:height)
+    #[arg(long)]
+    font_ratio: Option<f32>,
+
+    /// Skip prompts and use defaults for any missing arguments
+    #[arg(long, default_value_t = false)]
+    default: bool,
+
+    /// Use smaller default values for quality settings
+    #[arg(long, short, default_value_t = false, conflicts_with = "large")]
+    small: bool,
+
+    /// Use larger default values for quality settings
+    #[arg(long, short, default_value_t = false, conflicts_with = "small")]
+    large: bool,
+}
+
+fn main() -> Result<()> {
+    let mut args = Args::parse();
+
+    // --- Interactive Prompts ---
+    if args.input.is_none() {
+        if args.default {
+            return Err(anyhow!("Input file must be provided or via prompt."));
+        }
+        let files = find_media_files()?;
+        if files.is_empty() {
+            return Err(anyhow!("No media files found in current directory."));
+        }
+        let selection = FuzzySelect::with_theme(&dialoguer::theme::ColorfulTheme::default())
+            .with_prompt("Choose an input file")
+            .default(0)
+            .items(&files)
+            .interact()?;
+        args.input = Some(PathBuf::from(&files[selection]));
+    }
+
+    let input_path = args.input.unwrap();
+
+    let output_path = args.out.unwrap_or_else(|| PathBuf::from("."));
+
+    // Quality defaults based on flags
+    let (default_cols, default_fps, default_ratio) = if args.small {
+        (400, 24, 0.6)
+    } else if args.large {
+        (1200, 60, 0.8)
+    } else {
+        (800, 30, 0.7)
+    };
+
+    if args.columns.is_none() && !args.default {
+        args.columns = Some(
+            Input::new()
+                .with_prompt("Columns (width)")
+                .default(default_cols)
+                .interact()?,
+        );
+    }
+
+    if input_path.is_file() && args.fps.is_none() && !args.default {
+        args.fps = Some(
+            Input::new()
+                .with_prompt("Frames per second (FPS)")
+                .default(default_fps)
+                .interact()?,
+        );
+    }
+
+    if args.font_ratio.is_none() && !args.default {
+        args.font_ratio = Some(
+            Input::new()
+                .with_prompt("Font Ratio")
+                .default(default_ratio)
+                .interact()?,
+        );
+    }
+
+    let columns = args.columns.unwrap_or(default_cols);
+    let fps = args.fps.unwrap_or(default_fps);
+    let font_ratio = args.font_ratio.unwrap_or(default_ratio);
+
+    // --- Execution ---
+    fs::create_dir_all(&output_path).context("creating output dir")?;
+
+    let frame_dir = output_path.join("frame_images");
+    if frame_dir.exists() {
+        if args.default
+            || Confirm::new()
+                .with_prompt(format!(
+                    "Directory {} already exists. Overwrite?",
+                    frame_dir.display()
+                ))
+                .default(false)
+                .interact()?
+        {
+            fs::remove_dir_all(&frame_dir)?;
+        } else {
+            println!("Operation cancelled.");
+            return Ok(());
+        }
+    }
+    fs::create_dir_all(&frame_dir)?;
+
+    if input_path.is_file() {
+        run_ffmpeg_extract(&input_path, &frame_dir, columns, fps)?;
+        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, 1)?;
+    } else if input_path.is_dir() {
+        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, 1)?;
+    } else {
+        return Err(anyhow!("Input path does not exist"));
+    }
+
+    println!("\nASCII generation complete in {}", frame_dir.display());
+    Ok(())
+}
+
+fn find_media_files() -> Result<Vec<String>> {
+    Ok(WalkDir::new(".")
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path().is_file()
+                && e.path()
+                    .extension()
+                    .map_or(false, |ext| matches!(ext.to_str(), Some("mp4" | "mkv" | "mov" | "avi" | "webm" | "png" | "jpg")))
+        })
+        .map(|e| e.path().to_str().unwrap_or("").to_string())
+        .collect())
 }
 
 fn run_ffmpeg_extract(input: &Path, out_dir: &Path, columns: u32, fps: u32) -> Result<()> {
-    fs::create_dir_all(out_dir).context("creating frame_images dir")?;
+    println!("Extracting frames with ffmpeg...");
     let out_pattern = out_dir.join("frame_%04d.png");
     let status = Command::new("ffmpeg")
         .args([
@@ -52,6 +177,61 @@ fn run_ffmpeg_extract(input: &Path, out_dir: &Path, columns: u32, fps: u32) -> R
     if !status.success() {
         return Err(anyhow!("ffmpeg failed"));
     }
+    Ok(())
+}
+
+fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
+    fs::create_dir_all(dst_dir)?;
+    let mut pngs: Vec<PathBuf> = WalkDir::new(src_dir)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .map(|e| e.into_path())
+        .filter(|p| p.extension().map(|e| e == "png").unwrap_or(false))
+        .collect();
+    pngs.sort();
+
+    println!("Converting {} images to ASCII...", pngs.len());
+    let pb = ProgressBar::new(pngs.len() as u64);
+    pb.set_style(
+        ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
+    );
+
+    pngs.par_iter()
+        .progress_with(pb)
+        .try_for_each(|img_path| -> Result<()> {
+            let file_stem = img_path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .ok_or_else(|| anyhow!("bad file name"))?;
+            let out_txt = dst_dir.join(format!("{}.txt", file_stem));
+            convert_image_to_ascii(img_path, &out_txt, font_ratio, threshold)
+        })?;
+
+    Ok(())
+}
+
+fn convert_image_to_ascii(img_path: &Path, out_txt: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
+    let mut img = image::open(img_path).with_context(|| format!("opening {}", img_path.display()))?.to_rgb8();
+    let (w, h) = img.dimensions();
+    let new_h = ((h as f32) * font_ratio).max(1.0).round() as u32;
+    if new_h != h {
+        img = image::imageops::resize(&img, w, new_h, image::imageops::FilterType::Triangle);
+    }
+
+    let mut out = String::with_capacity((w as usize + 1) * (new_h as usize));
+    for y in 0..new_h {
+        for x in 0..w {
+            let px = img.get_pixel(x, y);
+            let l = luminance(*px);
+            out.push(char_for(l, threshold));
+        }
+        out.push('\n');
+    }
+    fs::write(out_txt, out).with_context(|| format!("writing {}", out_txt.display()))?;
     Ok(())
 }
 
@@ -73,86 +253,3 @@ fn char_for(luma: u8, threshold: u8) -> char {
         as usize;
     chars[idx] as char
 }
-
-fn convert_image_to_ascii(img_path: &Path, out_txt: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
-    let mut img = image::open(img_path).with_context(|| format!("opening {}", img_path.display()))?.to_rgb8();
-
-    // Vertical squash to account for character aspect ratio
-    let (w, h) = img.dimensions();
-    let new_h = ((h as f32) * font_ratio).max(1.0).round() as u32;
-    if new_h != h {
-        img = image::imageops::resize(&img, w, new_h, image::imageops::FilterType::Triangle);
-    }
-
-    let mut out = String::with_capacity((w as usize + 1) * (new_h as usize));
-    for y in 0..new_h {
-        for x in 0..w {
-            let px = img.get_pixel(x, y);
-            let l = luminance(*px);
-            out.push(char_for(l, threshold));
-        }
-        out.push('\n');
-    }
-    fs::write(out_txt, out).with_context(|| format!("writing {}", out_txt.display()))?;
-    Ok(())
-}
-
-fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
-    fs::create_dir_all(dst_dir)?;
-    let mut pngs: Vec<PathBuf> = WalkDir::new(src_dir)
-        .min_depth(1)
-        .max_depth(1)
-        .into_iter()
-        .filter_map(|e| e.ok())
-        .map(|e| e.into_path())
-        .filter(|p| p.extension().map(|e| e == "png").unwrap_or(false))
-        .collect();
-    pngs.sort();
-
-    let pb = ProgressBar::new(pngs.len() as u64);
-    pb.set_style(
-        ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
-            .unwrap()
-            .progress_chars("##-"),
-    );
-
-    pngs
-        .par_iter()
-        .progress_with(pb)
-        .try_for_each(|img_path| -> Result<()> {
-            let file_stem = img_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .ok_or_else(|| anyhow!("bad file name"))?;
-            let out_txt = dst_dir.join(format!("{}.txt", file_stem));
-            convert_image_to_ascii(img_path, &out_txt, font_ratio, threshold)
-        })?;
-
-    Ok(())
-}
-
-fn main() -> Result<()> {
-    let args = Args::parse();
-
-    fs::create_dir_all(&args.out).context("creating output dir")?;
-
-    let frame_dir = args.out.join("frame_images");
-    fs::create_dir_all(&frame_dir)?;
-
-    if args.input.is_file() {
-        // Extract frames from video first
-        run_ffmpeg_extract(&args.input, &frame_dir, args.columns, args.fps)?;
-        // Convert extracted PNGs to ASCII in parallel
-        convert_dir_pngs_parallel(&frame_dir, &frame_dir, args.font_ratio, 1)?;
-    } else if args.input.is_dir() {
-        // Convert existing PNGs in a directory
-        convert_dir_pngs_parallel(&args.input, &frame_dir, args.font_ratio, 1)?;
-    } else {
-        return Err(anyhow!("input path does not exist"));
-    }
-
-    println!("ASCII generation complete in {}", frame_dir.display());
-    Ok(())
-}
-
-
