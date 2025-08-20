@@ -32,26 +32,27 @@ struct Args {
     #[arg(long)]
     font_ratio: Option<f32>,
 
-    /// Skip prompts and use defaults for any missing arguments
-    #[arg(long, default_value_t = false)]
+    /// Use default quality preset
+    #[arg(long, default_value_t = false, conflicts_with_all = &["small", "large"])]
     default: bool,
 
     /// Use smaller default values for quality settings
-    #[arg(long, short, default_value_t = false, conflicts_with = "large")]
+    #[arg(long, short, default_value_t = false, conflicts_with_all = &["default", "large"])]
     small: bool,
 
     /// Use larger default values for quality settings
-    #[arg(long, short, default_value_t = false, conflicts_with = "small")]
+    #[arg(long, short, default_value_t = false, conflicts_with_all = &["default", "small"])]
     large: bool,
 }
 
 fn main() -> Result<()> {
     let mut args = Args::parse();
+    let is_interactive = !(args.default || args.small || args.large);
 
     // --- Interactive Prompts ---
     if args.input.is_none() {
-        if args.default {
-            return Err(anyhow!("Input file must be provided or via prompt."));
+        if !is_interactive {
+            return Err(anyhow!("Input file must be provided when using a preset."));
         }
         let files = find_media_files()?;
         if files.is_empty() {
@@ -71,14 +72,16 @@ fn main() -> Result<()> {
 
     // Quality defaults based on flags
     let (default_cols, default_fps, default_ratio) = if args.small {
-        (400, 24, 0.6)
+        (80, 24, 0.44)
     } else if args.large {
-        (1200, 60, 0.8)
+        (800, 60, 0.7)
+    } else if args.default {
+        (200, 24, 0.5)
     } else {
         (800, 30, 0.7)
     };
 
-    if args.columns.is_none() && !args.default {
+    if args.columns.is_none() && is_interactive {
         args.columns = Some(
             Input::new()
                 .with_prompt("Columns (width)")
@@ -87,7 +90,7 @@ fn main() -> Result<()> {
         );
     }
 
-    if input_path.is_file() && args.fps.is_none() && !args.default {
+    if input_path.is_file() && args.fps.is_none() && is_interactive {
         args.fps = Some(
             Input::new()
                 .with_prompt("Frames per second (FPS)")
@@ -96,7 +99,7 @@ fn main() -> Result<()> {
         );
     }
 
-    if args.font_ratio.is_none() && !args.default {
+    if args.font_ratio.is_none() && is_interactive {
         args.font_ratio = Some(
             Input::new()
                 .with_prompt("Font Ratio")
@@ -114,7 +117,7 @@ fn main() -> Result<()> {
 
     let frame_dir = output_path.join("frame_images");
     if frame_dir.exists() {
-        if args.default
+        if !is_interactive
             || Confirm::new()
                 .with_prompt(format!(
                     "Directory {} already exists. Overwrite?",
