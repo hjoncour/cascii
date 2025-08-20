@@ -10,15 +10,15 @@ function App() {
       <main>
         <div className="animation-container">
           <h2>Small</h2>
-          <ASCIIAnimation fps={24} frameCount={120} frameFolder="small" />
+          <ASCIIAnimation fps={24} frameCount={120} frameFolder="small" className="small-animation" />
         </div>
         <div className="animation-container">
           <h2>Default</h2>
-          <ASCIIAnimation fps={24} frameCount={120} frameFolder="default" />
+          <ASCIIAnimation fps={24} frameCount={120} frameFolder="default" className="default-animation" />
         </div>
         <div className="animation-container">
           <h2>Large</h2>
-          <ASCIIAnimation fps={60} frameCount={301} frameFolder="large" />
+          <ASCIIAnimation fps={60} frameCount={301} frameFolder="large" className="large-animation" />
         </div>
       </main>
     </div>

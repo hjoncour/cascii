@@ -142,12 +142,10 @@ export default function ASCIIAnimation({
     }
 
     return (
-        <div
-            className={`relative font-mono whitespace-pre overflow-hidden text-[0.25rem] leading-none ${className}`}
+        <pre
+            className={`relative font-mono overflow-hidden leading-none ${className}`}
         >
-            <div className="relative">
-                {frames[currentFrame]}
-            </div>
-        </div>
+            {frames[currentFrame]}
+        </pre>
     );
 }
