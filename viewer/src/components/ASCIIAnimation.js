@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
 class AnimationManager {
-    private _animation: number | null = null;
-    private callback: () => void;
-    private lastFrame = -1;
-    private frameTime = 1000 / 30;
+    _animation = null;
+    callback;
+    lastFrame = -1;
+    frameTime = 1000 / 30;
 
-    constructor(callback: () => void, fps = 30) {
+    constructor(callback, fps = 30) {
         this.callback = callback;
         this.frameTime = 1000 / fps;
     }
 
-    updateFPS(fps: number) {
+    updateFPS(fps) {
         this.frameTime = 1000 / fps;
     }
 
@@ -27,7 +27,7 @@ class AnimationManager {
         this._animation = null;
     }
 
-    private update = (time: number) => {
+    update = (time) => {
         const { lastFrame } = this;
         let delta = time - lastFrame;
         if (this.lastFrame === -1) {
@@ -49,10 +49,10 @@ export default function ASCIIAnimation({
     frameCount = 60,
     frameFolder = "frames",
 }) {
-    const [frames, setFrames] = useState<string[]>([]);
+    const [frames, setFrames] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentFrame, setCurrentFrame] = useState(0);
-    const framesRef = useRef<string[]>([]);
+    const framesRef = useRef([]);
 
     const [animationManager] = useState(
         () =>
