@@ -43,6 +43,10 @@ struct Args {
     /// Use larger default values for quality settings
     #[arg(long, short, default_value_t = false, conflicts_with_all = &["default", "small"])]
     large: bool,
+
+    /// Luminance threshold (0-255) for what is considered transparent
+    #[arg(long)]
+    luminance: Option<u8>,
 }
 
 fn main() -> Result<()> {
@@ -108,9 +112,19 @@ fn main() -> Result<()> {
         );
     }
 
+    if args.luminance.is_none() && is_interactive {
+        args.luminance = Some(
+            Input::new()
+                .with_prompt("Luminance threshold")
+                .default(1u8)
+                .interact()?,
+        );
+    }
+
     let columns = args.columns.unwrap_or(default_cols);
     let fps = args.fps.unwrap_or(default_fps);
     let font_ratio = args.font_ratio.unwrap_or(default_ratio);
+    let luminance = args.luminance.unwrap_or(1);
 
     // --- Execution ---
     fs::create_dir_all(&output_path).context("creating output dir")?;
@@ -136,14 +150,36 @@ fn main() -> Result<()> {
 
     if input_path.is_file() {
         run_ffmpeg_extract(&input_path, &frame_dir, columns, fps)?;
-        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, 1)?;
+        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, luminance)?;
     } else if input_path.is_dir() {
-        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, 1)?;
+        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, luminance)?;
     } else {
         return Err(anyhow!("Input path does not exist"));
     }
 
     println!("\nASCII generation complete in {}", frame_dir.display());
+
+    // --- Create details.txt ---
+    let frame_count = WalkDir::new(&frame_dir)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().extension().map_or(false, |ext| ext == "txt"))
+        .count();
+
+    let mut details = format!(
+        "Frames: {}\nLuminance: {}\nFont Ratio: {}\nColumns: {}",
+        frame_count, luminance, font_ratio, columns
+    );
+
+    if input_path.is_file() {
+        details.push_str(&format!("\nFPS: {}", fps));
+    }
+
+    let details_path = output_path.join("details.txt");
+    fs::write(details_path, details).context("writing details file")?;
+    
     Ok(())
 }
 
