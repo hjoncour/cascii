@@ -22,6 +22,15 @@ target
 
 .DS_Store
 /tests/video/output/**/*.png
+/tests/video/output/default/frame_images/*.txt
+/tests/video/output/small/frame_images/*.txt
+/tests/video/output/large/frame_images/*.txt
+
+/tests/video/output/**/*.png
+/tests/video/output/default/frame_images/*.txt
+/tests/video/output/small/frame_images/*.txt
+/tests/video/output/large/frame_images/*.txt
+
 
 # React app build output
 viewer/build
