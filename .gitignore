@@ -21,3 +21,8 @@ target
 #.idea/
 
 .DS_Store
+/tests/video/output/**/*.png
+
+# React app build output
+viewer/build
+viewer/node_modules
