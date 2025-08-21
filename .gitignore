@@ -30,7 +30,10 @@ target
 /tests/video/output/default/frame_images/*.txt
 /tests/video/output/small/frame_images/*.txt
 /tests/video/output/large/frame_images/*.txt
-
+/tests/video/output/large/frame_images/*.txt
+/tests/video/output/small/*.md
+/tests/video/output/default/*.md
+/tests/video/output/large/*.md
 
 # React app build output
 viewer/build

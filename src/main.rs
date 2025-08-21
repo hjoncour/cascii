@@ -177,7 +177,7 @@ fn main() -> Result<()> {
         details.push_str(&format!("\nFPS: {}", fps));
     }
 
-    let details_path = output_path.join("details.txt");
+    let details_path = output_path.join("details.md");
     fs::write(details_path, details).context("writing details file")?;
     
     Ok(())
