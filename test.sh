@@ -12,8 +12,8 @@ cargo build
 compare_dirs() {
     local dir1=$1
     local dir2=$2
-    local size1=$(du -sb "$dir1" | awk '{print $1}')
-    local size2=$(du -sb "$dir2" | awk '{print $1}')
+    local size1=$(du -s "$dir1" | awk '{print $1}')
+    local size2=$(du -s "$dir2" | awk '{print $1}')
 
     if [ "$size1" -eq "$size2" ]; then
         echo "Size check passed for $dir1 and $dir2"
