@@ -55,6 +55,14 @@ struct Args {
     /// Keep intermediate image files
     #[arg(long, default_value_t = false)]
     keep_images: bool,
+
+    /// Start time for video conversion (e.g., 00:01:23.456 or 83.456)
+    #[arg(long)]
+    start: Option<String>,
+
+    /// End time for video conversion (e.g., 00:01:23.456 or 83.456)
+    #[arg(long)]
+    end: Option<String>,
 }
 
 fn main() -> Result<()> {
@@ -80,7 +88,16 @@ fn main() -> Result<()> {
 
     let input_path = args.input.unwrap();
 
-    let output_path = args.out.unwrap_or_else(|| PathBuf::from("."));
+    let mut output_path = args.out.unwrap_or_else(|| PathBuf::from("."));
+
+    // If input is a file, create a directory for the output
+    if input_path.is_file() {
+        let file_stem = input_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("casci_output");
+        output_path.push(file_stem);
+    }
 
     // Quality defaults based on flags
     let (default_cols, default_fps, default_ratio) = if args.small {
@@ -129,6 +146,24 @@ fn main() -> Result<()> {
         );
     }
 
+    if input_path.is_file() && is_interactive {
+        if args.start.is_none() {
+            args.start = Some(
+                Input::new()
+                    .with_prompt("Start time (e.g., 00:00:05)")
+                    .default("0".to_string())
+                    .interact()?,
+            );
+        }
+        if args.end.is_none() {
+            args.end = Some(
+                Input::new()
+                    .with_prompt("End time (e.g., 00:00:10) (optional)")
+                    .interact()?,
+            );
+        }
+    }
+
     let columns = args.columns.unwrap_or(default_cols);
     let fps = args.fps.unwrap_or(default_fps);
     let font_ratio = args.font_ratio.unwrap_or(default_ratio);
@@ -157,7 +192,7 @@ fn main() -> Result<()> {
     fs::create_dir_all(&frame_dir)?;
 
     if input_path.is_file() {
-        run_ffmpeg_extract(&input_path, &frame_dir, columns, fps)?;
+        run_ffmpeg_extract(&input_path, &frame_dir, columns, fps, args.start.as_deref(), args.end.as_deref())?;
         convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, luminance, args.keep_images)?;
     } else if input_path.is_dir() {
         convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, luminance, args.keep_images)?;
@@ -211,21 +246,49 @@ fn find_media_files() -> Result<Vec<String>> {
         .collect())
 }
 
-fn run_ffmpeg_extract(input: &Path, out_dir: &Path, columns: u32, fps: u32) -> Result<()> {
+fn run_ffmpeg_extract(
+    input: &Path,
+    out_dir: &Path,
+    columns: u32,
+    fps: u32,
+    start: Option<&str>,
+    end: Option<&str>,
+) -> Result<()> {
     println!("Extracting frames with ffmpeg...");
     let out_pattern = out_dir.join("frame_%04d.png");
+    let mut ffmpeg_args = vec![
+        "-loglevel",
+        "error",
+    ];
+
+    if let Some(s) = start {
+        if !s.is_empty() && s != "0" {
+            ffmpeg_args.push("-ss");
+            ffmpeg_args.push(s);
+        }
+    }
+
+    ffmpeg_args.extend(&["-i", input.to_str().unwrap()]);
+
+    if let Some(e) = end {
+        if !e.is_empty() {
+            ffmpeg_args.push("-to");
+            ffmpeg_args.push(e);
+        }
+    }
+
+    let vf_option = format!("scale={}:-2,fps={}", columns, fps);
+    ffmpeg_args.extend(&[
+        "-vf",
+        &vf_option,
+        out_pattern.to_str().unwrap(),
+    ]);
+
     let status = Command::new("ffmpeg")
-        .args([
-            "-loglevel",
-            "error",
-            "-i",
-            input.to_str().unwrap(),
-            "-vf",
-            &format!("scale={}:-2,fps={}", columns, fps),
-            out_pattern.to_str().unwrap(),
-        ])
+        .args(&ffmpeg_args)
         .status()
         .context("running ffmpeg")?;
+
     if !status.success() {
         return Err(anyhow!("ffmpeg failed"));
     }
