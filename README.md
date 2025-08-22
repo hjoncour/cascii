@@ -1,4 +1,4 @@
-# cascii
+# casci
 
 rust cli to convert stuff to make ascii art
 
@@ -23,11 +23,15 @@ An `install.sh` script is provided to build and install `casci` to `/usr/local/b
 ./install.sh
 ```
 
-You will be prompted for your password as it uses `sudo` to copy the binary.
+You will be prompted for your password as it uses `sudo` to copy the binary. The installer will also add a `casci-demo` function to your shell configuration file (`.zshrc` or `.bash_profile`).
+
+**Important:** After installation, you must run `source ~/.zshrc` (or `source ~/.bash_profile`) or open a new terminal window to use the `casci-demo` command.
 
 ## Usage
 
-### Interactive
+### casci
+
+#### Interactive
 
 Run `casci` without any arguments to be guided through the process:
 
@@ -37,7 +41,7 @@ casci
 
 It will first ask you to select an input file from the current directory, then prompt for the output directory, and finally for the quality settings.
 
-### With Arguments
+#### With Arguments
 
 You can also provide arguments directly:
 
@@ -52,7 +56,7 @@ casci my_video.mp4 --out ./my_frames --large
 casci my_video.mp4 --out ./my_frames --default
 ```
 
-### Options
+#### Options
 
 - `[input]`: (Optional) The input video file or directory of images.
 - `-o`, `--out`: (Optional) The output directory. Defaults to the current directory.
@@ -65,6 +69,33 @@ casci my_video.mp4 --out ./my_frames --default
 - `-h`, `--help`: Shows the help message.
 - `-V`, `--version`: Shows the version information.
 
+### casci-demo
+
+The `casci-demo` command is a companion to `casci` that helps you manage and view your ASCII art projects.
+
+#### Importing a Project
+
+To import a new project, provide the path to the directory containing your `frame_*.txt` files. This will copy the project into the viewer's directory and start the viewer.
+
+```bash
+casci-demo ./my_frames
+```
+
+#### Navigating to the Projects Directory
+
+The `go` command allows you to quickly navigate to the directory where your demo projects are stored.
+
+```bash
+casci-demo go
+```
+
+#### Opening the Projects Directory
+
+The `open` command will open the projects directory in your system's file explorer.
+
+```bash
+casci-demo open
+```
 
 # Test Image
 
