@@ -172,38 +172,76 @@ fn main() -> Result<()> {
     // --- Execution ---
     fs::create_dir_all(&output_path).context("creating output dir")?;
 
-    let frame_dir = output_path.join("frame_images");
-    if frame_dir.exists() {
-        if !is_interactive
-            || Confirm::new()
+    // Check if output directory already contains frames.
+    let has_frames = WalkDir::new(&output_path)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(Result::ok)
+        .any(|e| {
+            e.file_name()
+                .to_str()
+                .map_or(false, |s| s.starts_with("frame_"))
+        });
+
+    if has_frames {
+        if is_interactive
+            && !Confirm::new()
                 .with_prompt(format!(
-                    "Directory {} already exists. Overwrite?",
-                    frame_dir.display()
+                    "Output directory {} already contains frames. Overwrite?",
+                    output_path.display()
                 ))
                 .default(false)
                 .interact()?
         {
-            fs::remove_dir_all(&frame_dir)?;
-        } else {
             println!("Operation cancelled.");
             return Ok(());
         }
+
+        // Clean up existing frames
+        for entry in fs::read_dir(&output_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                if name.starts_with("frame_") && (name.ends_with(".png") || name.ends_with(".txt")) {
+                    fs::remove_file(path)?;
+                }
+            }
+        }
     }
-    fs::create_dir_all(&frame_dir)?;
 
     if input_path.is_file() {
-        run_ffmpeg_extract(&input_path, &frame_dir, columns, fps, args.start.as_deref(), args.end.as_deref())?;
-        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, luminance, args.keep_images)?;
+        run_ffmpeg_extract(
+            &input_path,
+            &output_path,
+            columns,
+            fps,
+            args.start.as_deref(),
+            args.end.as_deref(),
+        )?;
+        convert_dir_pngs_parallel(
+            &output_path,
+            &output_path,
+            font_ratio,
+            luminance,
+            args.keep_images,
+        )?;
     } else if input_path.is_dir() {
-        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, luminance, args.keep_images)?;
+        convert_dir_pngs_parallel(
+            &input_path,
+            &output_path,
+            font_ratio,
+            luminance,
+            args.keep_images,
+        )?;
     } else {
         return Err(anyhow!("Input path does not exist"));
     }
 
-    println!("\nASCII generation complete in {}", frame_dir.display());
+    println!("\nASCII generation complete in {}", output_path.display());
 
     // --- Create details.txt ---
-    let frame_count = WalkDir::new(&frame_dir)
+    let frame_count = WalkDir::new(&output_path)
         .min_depth(1)
         .max_depth(1)
         .into_iter()
@@ -256,33 +294,54 @@ fn run_ffmpeg_extract(
 ) -> Result<()> {
     println!("Extracting frames with ffmpeg...");
     let out_pattern = out_dir.join("frame_%04d.png");
-    let mut ffmpeg_args = vec![
-        "-loglevel",
-        "error",
+    let mut ffmpeg_args: Vec<String> = vec![
+        "-loglevel".into(),
+        "error".into(),
     ];
 
     if let Some(s) = start {
         if !s.is_empty() && s != "0" {
-            ffmpeg_args.push("-ss");
-            ffmpeg_args.push(s);
+            ffmpeg_args.push("-ss".into());
+            ffmpeg_args.push(s.to_string());
         }
     }
 
-    ffmpeg_args.extend(&["-i", input.to_str().unwrap()]);
+    ffmpeg_args.push("-i".into());
+    ffmpeg_args.push(input.to_str().unwrap().to_string());
 
     if let Some(e) = end {
         if !e.is_empty() {
-            ffmpeg_args.push("-to");
-            ffmpeg_args.push(e);
+            // If start time is also specified, calculate duration
+            if let Some(s) = start {
+                if !s.is_empty() && s != "0" {
+                    // This is a simplistic duration calculation. Assumes HH:MM:SS or seconds format.
+                    // For more robust parsing, a dedicated time parsing library would be better.
+                    let start_secs = s.split(':').rev().enumerate().fold(0.0, |acc, (i, v)| {
+                        acc + v.parse::<f64>().unwrap_or(0.0) * 60f64.powi(i as i32)
+                    });
+                    let end_secs = e.split(':').rev().enumerate().fold(0.0, |acc, (i, v)| {
+                        acc + v.parse::<f64>().unwrap_or(0.0) * 60f64.powi(i as i32)
+                    });
+                    let duration = end_secs - start_secs;
+                    if duration > 0.0 {
+                        ffmpeg_args.push("-t".into());
+                        ffmpeg_args.push(duration.to_string());
+                    }
+                } else {
+                    ffmpeg_args.push("-t".into());
+                    ffmpeg_args.push(e.to_string());
+                }
+            } else {
+                ffmpeg_args.push("-t".into());
+                ffmpeg_args.push(e.to_string());
+            }
         }
     }
 
     let vf_option = format!("scale={}:-2,fps={}", columns, fps);
-    ffmpeg_args.extend(&[
-        "-vf",
-        &vf_option,
-        out_pattern.to_str().unwrap(),
-    ]);
+    ffmpeg_args.push("-vf".into());
+    ffmpeg_args.push(vf_option);
+    ffmpeg_args.push(out_pattern.to_str().unwrap().to_string());
 
     let status = Command::new("ffmpeg")
         .args(&ffmpeg_args)
