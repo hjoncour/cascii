@@ -13,8 +13,6 @@ cargo build --release
 
 echo "Installing casci to /usr/local/bin..."
 sudo cp ./target/release/casci /usr/local/bin/casci
-
-# Make sure it's executable
 sudo chmod +x /usr/local/bin/casci
 
 echo "Installation complete!"
