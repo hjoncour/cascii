@@ -1,3 +1,2 @@
-refactor js code
 add naming cmd
-add trimming cmd
+specify length of video to convert (default, full video)
