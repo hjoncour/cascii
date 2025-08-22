@@ -9,15 +9,16 @@ cargo build
 
 find ./tests/video/output -type f -name "*.png" -delete
 
-# Clean up expected directories
+# Clean up output and expected directories
 find ./tests/video/output -type f -name "details.md" -delete
 find ./tests/video/output -type f -name ".DS_Store" -delete
+find ./public -type f -name ".DS_Store" -delete
 
 tests_failed=0
 
 run_comparison() {
     local type=$1
-    local expected_dir=./tests/video/output/$type/expected
+    local expected_dir=./public/$type
     local actual_dir=./tests/video/output/$type/frame_images
 
     printf "\n--- Comparisons for %s ---\n" "$type"
