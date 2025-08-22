@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use walkdir::WalkDir;
+use unicode_segmentation::UnicodeSegmentation;
 
 /// Characters from darkest to lightest.
 const ASCII_CHARS: &str = " .`'^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
@@ -18,6 +19,7 @@ struct Args {
     input: Option<PathBuf>,
 
     /// Output directory for the generated files
+    #[arg(long, short)]
     out: Option<PathBuf>,
 
     /// Target columns for scaling (width)
@@ -55,10 +57,49 @@ struct Args {
     /// Keep intermediate image files
     #[arg(long, default_value_t = false)]
     keep_images: bool,
+
+    /// Trim columns from the left
+    #[arg(long)]
+    trim_left: Option<u32>,
+
+    /// Trim columns from the right
+    #[arg(long)]
+    trim_right: Option<u32>,
+
+    /// Trim lines from the top
+    #[arg(long)]
+    trim_top: Option<u32>,
+
+    /// Trim lines from the bottom
+    #[arg(long)]
+    trim_bottom: Option<u32>,
 }
 
 fn main() -> Result<()> {
     let mut args = Args::parse();
+
+    let is_trim_operation = args.trim_left.is_some()
+        || args.trim_right.is_some()
+        || args.trim_top.is_some()
+        || args.trim_bottom.is_some();
+
+    if is_trim_operation {
+        let input_path = args.input.context("Input path is required for trimming operation")?;
+        if !input_path.is_dir() {
+            return Err(anyhow!("Input path for trimming must be a directory."));
+        }
+        println!("Trimming frames in {}...", input_path.display());
+        trim_frames_in_dir(
+            &input_path,
+            args.trim_left,
+            args.trim_right,
+            args.trim_top,
+            args.trim_bottom,
+        )?;
+        println!("Trimming complete.");
+        return Ok(());
+    }
+
     let is_interactive = !(args.default || args.small || args.large);
 
     // --- Interactive Prompts ---
@@ -194,6 +235,81 @@ fn main() -> Result<()> {
     }
     
     Ok(())
+}
+
+fn trim_frames_in_dir(
+    dir: &Path,
+    left: Option<u32>,
+    right: Option<u32>,
+    top: Option<u32>,
+    bottom: Option<u32>,
+) -> Result<()> {
+    let txt_files: Vec<PathBuf> = WalkDir::new(dir)
+        .min_depth(1)
+        .max_depth(1)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .map(|e| e.into_path())
+        .filter(|p| {
+            p.extension().map_or(false, |e| e == "txt")
+                && p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .map_or(false, |s| s.starts_with("frame_"))
+        })
+        .collect();
+
+    println!("Found {} frames to trim.", txt_files.len());
+    let pb = ProgressBar::new(txt_files.len() as u64);
+    pb.set_style(
+        ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan/blue} {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("##-"),
+    );
+
+    txt_files.par_iter().progress_with(pb).try_for_each(|path| -> Result<()> {
+        let content = fs::read_to_string(path)?;
+        let trimmed_content = trim_frame(
+            &content,
+            left.unwrap_or(0),
+            right.unwrap_or(0),
+            top.unwrap_or(0),
+            bottom.unwrap_or(0),
+        );
+        fs::write(path, trimmed_content)?;
+        Ok(())
+    })?;
+
+    Ok(())
+}
+
+fn trim_frame(content: &str, left: u32, right: u32, top: u32, bottom: u32) -> String {
+    let mut lines: Vec<&str> = content.lines().collect();
+
+    // Top/Bottom trim
+    let top_trim = top as usize;
+    let bottom_trim = bottom as usize;
+    if top_trim + bottom_trim < lines.len() {
+        lines = lines[top_trim..lines.len() - bottom_trim].to_vec();
+    } else {
+        return "".to_string();
+    }
+
+    // Left/Right trim for each line
+    lines
+        .into_iter()
+        .map(|line| {
+            let graphemes: Vec<&str> = line.graphemes(true).collect();
+            let left_trim = left as usize;
+            let right_trim = right as usize;
+
+            if left_trim + right_trim < graphemes.len() {
+                graphemes[left_trim..graphemes.len() - right_trim].concat()
+            } else {
+                "".to_string()
+            }
+        })
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 fn find_media_files() -> Result<Vec<String>> {
