@@ -12,10 +12,6 @@ function App() {
         <div className="animation-container">
           <ASCIIAnimation fps={24} frameCount={120} frameFolder="small" className="small-animation" />
         </div>
-        <h2>Small 2</h2>
-        <div className="animation-container">
-          <ASCIIAnimation fps={24} frameCount={120} frameFolder="frame_images" className="small-animation" />
-        </div>
         <h2>Default</h2>
         <div className="animation-container">
           <ASCIIAnimation fps={24} frameCount={120} frameFolder="default" className="default-animation" />

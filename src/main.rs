@@ -47,6 +47,10 @@ struct Args {
     /// Luminance threshold (0-255) for what is considered transparent
     #[arg(long)]
     luminance: Option<u8>,
+
+    /// Log details to standard output
+    #[arg(long, default_value_t = false)]
+    log_details: bool,
 }
 
 fn main() -> Result<()> {
@@ -177,8 +181,13 @@ fn main() -> Result<()> {
         details.push_str(&format!("\nFPS: {}", fps));
     }
 
-    let details_path = output_path.join("details.txt");
-    fs::write(details_path, details).context("writing details file")?;
+    let details_path = output_path.join("details.md");
+    fs::write(details_path, &details).context("writing details file")?;
+
+    if args.log_details {
+        println!("\n--- Generation Details ---");
+        println!("{}", details);
+    }
     
     Ok(())
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import {useEffect, useRef, useState} from "react";
 
 class AnimationManager {
     _animation = null;
@@ -28,7 +28,7 @@ class AnimationManager {
     }
 
     update = (time) => {
-        const { lastFrame } = this;
+        const {lastFrame} = this;
         let delta = time - lastFrame;
         if (this.lastFrame === -1) {
             this.lastFrame = time;
@@ -43,12 +43,7 @@ class AnimationManager {
     };
 }
 
-export default function ASCIIAnimation({
-    className = "",
-    fps = 24,
-    frameCount = 60,
-    frameFolder = "frames",
-}) {
+export default function ASCIIAnimation({className = "", fps = 24, frameCount = 60, frameFolder = "frames"}) {
     const [frames, setFrames] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentFrame, setCurrentFrame] = useState(0);
@@ -67,10 +62,7 @@ export default function ASCIIAnimation({
     useEffect(() => {
         const loadFrames = async () => {
             try {
-                const frameFiles = Array.from(
-                    { length: frameCount },
-                    (_, i) => `frame_${String(i + 1).padStart(4, "0")}.txt`,
-                );
+                const frameFiles = Array.from({length: frameCount}, (_, i) => `frame_${String(i + 1).padStart(4, "0")}.txt`);
 
                 const framePromises = frameFiles.map(async (filename) => {
                     const response = await fetch(`/${frameFolder}/${filename}`);
@@ -100,9 +92,8 @@ export default function ASCIIAnimation({
 
     useEffect(() => {
         if (frames.length === 0) return;
-
-        const reducedMotion =
-            window.matchMedia(`(prefers-reduced-motion: reduce)`).matches === true;
+    
+        const reducedMotion = window.matchMedia(`(prefers-reduced-motion: reduce)`).matches === true;
 
         if (reducedMotion) {
             return;
@@ -126,26 +117,12 @@ export default function ASCIIAnimation({
     }, [animationManager, frames.length]);
 
     if (isLoading) {
-        return (
-            <div className={`font-mono whitespace-pre overflow-hidden ${className}`}>
-                Loading ASCII animation...
-            </div>
-        );
+        return (<div className={`font-mono whitespace-pre overflow-hidden ${className}`}>Loading ASCII animation...</div>);
     }
 
     if (!frames.length) {
-        return (
-            <div className={`font-mono whitespace-pre overflow-hidden ${className}`}>
-                No frames loaded
-            </div>
-        );
+        return (<div className={`font-mono whitespace-pre overflow-hidden ${className}`}>No frames loaded</div>);
     }
 
-    return (
-        <pre
-            className={`relative font-mono overflow-hidden leading-none ${className}`}
-        >
-            {frames[currentFrame]}
-        </pre>
-    );
+    return (<pre className={`relative font-mono overflow-hidden leading-none ${className}`}>{frames[currentFrame]}</pre>);
 }
