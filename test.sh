@@ -9,6 +9,10 @@ cargo build
 
 find ./tests/video/output -type f -name "*.png" -delete
 
+# Clean up expected directories
+find ./tests/video/output -type f -name "details.md" -delete
+find ./tests/video/output -type f -name ".DS_Store" -delete
+
 tests_failed=0
 
 run_comparison() {
@@ -32,8 +36,8 @@ run_comparison() {
     table_body+="Total Size (blocks),$size1,$size2,$result\n"
 
     # Compare file count
-    local count1=$(find "$expected_dir" -type f | wc -l | tr -d ' ')
-    local count2=$(find "$actual_dir" -type f | wc -l | tr -d ' ')
+    local count1=$(find "$expected_dir" -type f -name "frame_*.txt" | wc -l | tr -d ' ')
+    local count2=$(find "$actual_dir" -type f -name "frame_*.txt" | wc -l | tr -d ' ')
     result="PASSED"
     if [ "$count1" -ne "$count2" ]; then
         result="FAILED"
