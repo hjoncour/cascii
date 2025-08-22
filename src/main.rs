@@ -51,6 +51,10 @@ struct Args {
     /// Log details to standard output
     #[arg(long, default_value_t = false)]
     log_details: bool,
+
+    /// Keep intermediate image files
+    #[arg(long, default_value_t = false)]
+    keep_images: bool,
 }
 
 fn main() -> Result<()> {
@@ -154,9 +158,9 @@ fn main() -> Result<()> {
 
     if input_path.is_file() {
         run_ffmpeg_extract(&input_path, &frame_dir, columns, fps)?;
-        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, luminance)?;
+        convert_dir_pngs_parallel(&frame_dir, &frame_dir, font_ratio, luminance, args.keep_images)?;
     } else if input_path.is_dir() {
-        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, luminance)?;
+        convert_dir_pngs_parallel(&input_path, &frame_dir, font_ratio, luminance, args.keep_images)?;
     } else {
         return Err(anyhow!("Input path does not exist"));
     }
@@ -228,7 +232,7 @@ fn run_ffmpeg_extract(input: &Path, out_dir: &Path, columns: u32, fps: u32) -> R
     Ok(())
 }
 
-fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
+fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, threshold: u8, keep_images: bool) -> Result<()> {
     fs::create_dir_all(dst_dir)?;
     let mut pngs: Vec<PathBuf> = WalkDir::new(src_dir)
         .min_depth(1)
@@ -258,6 +262,12 @@ fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, th
             let out_txt = dst_dir.join(format!("{}.txt", file_stem));
             convert_image_to_ascii(img_path, &out_txt, font_ratio, threshold)
         })?;
+
+    if !keep_images {
+        for img_path in &pngs {
+            fs::remove_file(img_path)?;
+        }
+    }
 
     Ok(())
 }
