@@ -10,6 +10,25 @@
   padding: 2rem;
 }
 
+.App-header nav {
+  margin-top: 1rem;
+}
+
+.App-header nav button {
+  background: none;
+  border: 1px solid transparent;
+  color: white;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin: 0 0.5rem;
+  border-radius: 4px;
+}
+
+.App-header nav button.active {
+  border-color: #61dafb;
+}
+
 main {
   display: flex;
   flex-direction: column;
@@ -25,11 +44,12 @@ main {
   border-radius: 8px;
   width: fit-content;
   margin: 0 auto;
-  display: flex;
-  justify-content: center;
 }
 
-.small-animation, .default-animation, .large-animation {
+.small-animation,
+.default-animation,
+.large-animation,
+.project-animation {
   font-family: 'Courier New', Courier, monospace;
 }
 
@@ -43,4 +63,9 @@ main {
 
 .large-animation {
   font-size: 0.15vw;
+}
+
+.project-animation {
+  /* You might want a default size for projects, or pass it as a prop */
+  font-size: 0.5vw;
 }
