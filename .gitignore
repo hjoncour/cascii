@@ -36,5 +36,5 @@ target
 /tests/video/output/large/*.md
 
 # React app build output
-viewer/build
-viewer/node_modules
+/build
+/node_modules
