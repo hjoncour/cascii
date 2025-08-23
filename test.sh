@@ -12,14 +12,24 @@ find ./tests/video/output -type f -name "*.png" -delete
 # Clean up output and expected directories
 find ./tests/video/output -type f -name "details.md" -delete
 find ./tests/video/output -type f -name ".DS_Store" -delete
-find ./public -type f -name ".DS_Store" -delete
+# Clean up any stray files in repo (none expected for viewer now)
 
 tests_failed=0
 
 run_comparison() {
     local type=$1
-    local expected_dir=./public/$type
-    local actual_dir=./tests/video/output/$type/frame_images
+    local expected_dir=./tests/video/output/expected/$type
+    local output_base=./tests/video/output/$type
+    local actual_dir="$output_base"
+
+    # Detect actual frames directory (handles nested subdir like file stem)
+    if [ ! -f "$actual_dir/frame_0001.txt" ]; then
+        local found
+        found=$(find "$output_base" -maxdepth 3 -type f -name 'frame_0001.txt' | head -n 1)
+        if [ -n "$found" ]; then
+            actual_dir=$(dirname "$found")
+        fi
+    fi
 
     printf "\n--- Comparisons for %s ---\n" "$type"
     
@@ -68,7 +78,10 @@ run_comparison() {
     fi
     table_body+="Frame Width (chars),$width1,$width2,$result\n"
 
-    (echo "$table_header"; echo -e "$table_body") | column -t -s ','
+    {
+        printf "%s\n" "$table_header"
+        printf "%b" "$table_body"
+    } | column -t -s ','
 }
 
 run_comparison small

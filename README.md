@@ -26,9 +26,7 @@ An `install.sh` script is provided to build and install `casci` to `/usr/local/b
 ./install.sh
 ```
 
-You will be prompted for your password as it uses `sudo` to copy the binary. The installer will also add a `casci-demo` function to your shell configuration file (`.zshrc` or `.bash_profile`).
-
-**Important:** After installation, you must run `source ~/.zshrc` (or `source ~/.bash_profile`) or open a new terminal window to use the `casci-demo` command.
+You will be prompted for your password as it uses `sudo` to copy the binary.
 
 ## Usage
 
@@ -77,46 +75,18 @@ casci my_video.mp4 --start 00:00:10 --end 00:00:15
 - `-h`, `--help`: Shows the help message.
 - `-V`, `--version`: Shows the version information.
 
-### casci-demo
-
-The `casci-demo` command is a companion to `casci` that helps you manage and view your ASCII art projects.
-
-#### Importing a Project
-
-To import a new project, provide the path to the directory containing your `frame_*.txt` files. This will copy the project into the viewer's directory and start the viewer.
-
-```bash
-casci-demo ./my_frames
-```
-
-#### Navigating to the Projects Directory
-
-The `go` command allows you to quickly navigate to the directory where your demo projects are stored.
-
-```bash
-casci-demo go
-```
-
-#### Opening the Projects Directory
-
-The `open` command will open the projects directory in your system's file explorer.
-
-```bash
-casci-demo open
-```
-
 # Test Image
 
 ./target/release/ascii-gen \
   --input ./some_frames_dir \
-  --out ../public/sunset_hl \
+  --out ../output/sunset_hl \
   --font-ratio 0.7
 
 # Test Video
 
 ./target/release/ascii-gen \
   --input ../input.webm \
-  --out ../public/sunset_hl \
+  --out ../output/sunset_hl \
   --columns 800 \
   --fps 30 \
   --font-ratio 0.7
