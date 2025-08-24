@@ -37,3 +37,7 @@ target
 /tests/video/output/default/test/*.txt
 
 /tests/video/output/expected/**/*.txt
+
+/tests/video/output/default/**/*.txt
+/tests/video/output/small/**/*.txt
+/tests/video/output/large/**/*.txt
