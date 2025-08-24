@@ -71,6 +71,54 @@ cascii my_video.mp4 --start 00:00:10 --end 00:00:15
 - `-h`, `--help`: Shows the help message.
 - `-V`, `--version`: Shows the version information.
 
+
+### Examples:
+
+#### Source image:
+
+link to source.png
+
+#### Test 1:
+
+settings:
+
+Luminance: 1
+Font Ratio: 0.7
+Columns: 400
+
+link to test_01.png
+
+#### Test 2:
+
+settings:
+
+Luminance: 1
+Font Ratio: 0.7
+Columns: 400
+
+link to test_02.png
+
+#### Test 3:
+
+settings:
+
+Luminance: 1
+Font Ratio: 0.7
+Columns: 400
+
+link to test_03.png
+
+#### Test 3:
+
+settings:
+
+Luminance: 1
+Font Ratio: 0.7
+Columns: 400
+
+link to test_04.png
+
+
 # Test Image
 
 ./target/release/ascii-gen \

@@ -1,19 +1,28 @@
 use anyhow::{anyhow, Context, Result};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use dialoguer::{Confirm, FuzzySelect, Input};
 use indicatif::{ParallelProgressIterator, ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::Command as ProcCommand;
 use walkdir::WalkDir;
 
 /// Characters from darkest to lightest.
 const ASCII_CHARS: &str = " .`'^,:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
+#[derive(Subcommand, Debug)]
+enum Command {
+    /// Uninstall cascii and remove associated data
+    Uninstall,
+}
+
 #[derive(Parser, Debug)]
 #[command(version, about = "Interactive video/image to ASCII frame generator.")]
 struct Args {
+    /// Optional subcommands
+    #[command(subcommand)]
+    cmd: Option<Command>,
     /// Input video file or directory of images
     input: Option<PathBuf>,
 
@@ -68,6 +77,13 @@ struct Args {
 fn main() -> Result<()> {
     let mut args = Args::parse();
     let is_interactive = !(args.default || args.small || args.large);
+
+    // Handle subcommands early
+    if let Some(Command::Uninstall) = &args.cmd {
+        run_uninstall(is_interactive)?;
+        println!("cascii uninstalled.");
+        return Ok(());
+    }
 
     // --- Interactive Prompts ---
     if args.input.is_none() {
@@ -402,7 +418,7 @@ fn run_ffmpeg_extract(
     ffmpeg_args.push(vf_option);
     ffmpeg_args.push(out_pattern.to_str().unwrap().to_string());
 
-    let status = Command::new("ffmpeg")
+    let status = ProcCommand::new("ffmpeg")
         .args(&ffmpeg_args)
         .status()
         .context("running ffmpeg")?;
@@ -508,4 +524,43 @@ fn char_for(luma: u8, threshold: u8) -> char {
         .clamp(0.0, (chars.len() - 1) as f32)
         as usize;
     chars[idx] as char
+}
+
+fn run_uninstall(is_interactive: bool) -> Result<()> {
+    let bin_paths = vec!["/usr/local/bin/cascii", "/usr/local/bin/casci"]; // legacy symlink
+    let app_support = dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from(format!("{}/Library/Application Support", std::env::var("HOME").unwrap_or_default())))
+        .join("cascii");
+
+    if is_interactive {
+        let confirmed = Confirm::new()
+            .with_prompt("This will remove cascii and its app support directory. Continue?")
+            .default(false)
+            .interact()?;
+        if !confirmed {
+            println!("Uninstall cancelled.");
+            return Ok(());
+        }
+    }
+
+    for p in bin_paths {
+        let path = Path::new(p);
+        if path.exists() {
+            if let Err(e) = fs::remove_file(path) {
+                eprintln!("Warning: failed to remove {}: {}", p, e);
+            }
+        }
+    }
+
+    if app_support.exists() {
+        if let Err(e) = fs::remove_dir_all(&app_support) {
+            eprintln!(
+                "Warning: failed to remove app support directory {}: {}",
+                app_support.display(),
+                e
+            );
+        }
+    }
+
+    Ok(())
 }
