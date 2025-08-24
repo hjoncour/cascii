@@ -1,16 +1,12 @@
-# casci
+# cascii - Interactive ASCII Frame Generator
 
-rust cli to convert stuff to make ascii art
+`cascii` is a high-performance, interactive tool for converting videos and image sequences into ASCII art frames.
 
-# casci - Interactive ASCII Frame Generator
-
-`casci` is a high-performance, interactive tool for converting videos and image sequences into ASCII art frames.
-
-When converting a video, the output files will be placed in a directory named after the video file. For example, `casci my_video.mp4` will create a `my_video` directory.
+When converting a video, the output files will be placed in a directory named after the video file. For example, `cascii my_video.mp4` will create a `my_video` directory.
 
 ## Features
 
-- **Interactive Mode**: If you don't provide arguments, `casci` will prompt you for them.
+- **Interactive Mode**: If you don't provide arguments, `cascii` will prompt you for them.
 - **Flexible Input**: Works with video files or directories of PNGs.
 - **Performance**: Uses `ffmpeg` for fast frame extraction and parallel processing with Rayon for ASCII conversion.
 - **Video Segments**: Specify start and end times to convert only a portion of a video.
@@ -19,10 +15,10 @@ When converting a video, the output files will be placed in a directory named af
 
 ## Installation
 
-An `install.sh` script is provided to build and install `casci` to `/usr/local/bin`.
+An `install.sh` script is provided to build and install `cascii` to `/usr/local/bin`.
 
 ```bash
-# Make sure you are in the casci directory
+# Make sure you are in the cascii directory
 ./install.sh
 ```
 
@@ -30,14 +26,14 @@ You will be prompted for your password as it uses `sudo` to copy the binary.
 
 ## Usage
 
-### casci
+### cascii
 
 #### Interactive
 
-Run `casci` without any arguments to be guided through the process:
+Run `cascii` without any arguments to be guided through the process:
 
 ```bash
-casci
+cascii
 ```
 
 It will first ask you to select an input file from the current directory, then prompt for the output directory, and finally for the quality settings.
@@ -48,16 +44,16 @@ You can also provide arguments directly:
 
 ```bash
 # Basic usage with a video file
-casci my_video.mp4 --out ./my_frames
+cascii my_video.mp4 --out ./my_frames
 
 # Using presets
-casci my_video.mp4 --out ./my_frames --large
+cascii my_video.mp4 --out ./my_frames --large
 
 # Non-interactive mode (will fail if input is not provided)
-casci my_video.mp4 --out ./my_frames --default
+cascii my_video.mp4 --out ./my_frames --default
 
 # Convert a 5-second clip starting at 10 seconds into the video
-casci my_video.mp4 --start 00:00:10 --end 00:00:15
+cascii my_video.mp4 --start 00:00:10 --end 00:00:15
 ```
 
 #### Options

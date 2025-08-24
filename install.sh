@@ -2,7 +2,7 @@
 set -e
 
 # App specific directory in Application Support
-APP_SUPPORT_DIR="$HOME/Library/Application Support/casci"
+APP_SUPPORT_DIR="$HOME/Library/Application Support/cascii"
 REPO_DIR="$APP_SUPPORT_DIR/repo"
 
 echo "Setting up application directory at $APP_SUPPORT_DIR..."
@@ -16,11 +16,13 @@ echo "Building release binary in $REPO_DIR..."
 
 INSTALL_DIR="/usr/local/bin"
 
-# Install casci binary
-BINARY_NAME="casci"
+# Install cascii binary
+BINARY_NAME="cascii"
 SOURCE_PATH="$REPO_DIR/target/release/$BINARY_NAME"
 echo "Installing $BINARY_NAME to $INSTALL_DIR..."
 sudo cp "$SOURCE_PATH" "$INSTALL_DIR/$BINARY_NAME"
+echo "Creating backward-compatible 'casci' symlink..."
+sudo ln -sf "$INSTALL_DIR/$BINARY_NAME" "$INSTALL_DIR/casci"
 
 # Determine shell configuration file
 SHELL_CONFIG=""
@@ -37,4 +39,4 @@ fi
 touch "$SHELL_CONFIG"
 
 echo "Installation complete."
-echo "You can now use 'casci'."
+echo "You can now use 'cascii'."

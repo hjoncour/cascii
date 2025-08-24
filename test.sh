@@ -3,9 +3,9 @@ set -euo pipefail
 
 cargo build
 
-./target/debug/casci ./tests/video/input/test.mkv ./tests/video/output/small --small
-./target/debug/casci ./tests/video/input/test.mkv ./tests/video/output/default --default
-./target/debug/casci ./tests/video/input/test.mkv ./tests/video/output/large --large
+./target/debug/cascii ./tests/video/input/test.mkv ./tests/video/output/small --small
+./target/debug/cascii ./tests/video/input/test.mkv ./tests/video/output/default --default
+./target/debug/cascii ./tests/video/input/test.mkv ./tests/video/output/large --large
 
 find ./tests/video/output -type f -name "*.png" -delete
 
