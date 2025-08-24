@@ -4,6 +4,8 @@
 
 When converting a video, the output files will be placed in a directory named after the video file. For example, `cascii my_video.mp4` will create a `my_video` directory.
 
+I recommend installing [cascii-viewer](https://github.com/cascii/cascii-viewer) to easily play any ascii animation generated
+
 ## Features
 
 - **Interactive Mode**: If you don't provide arguments, `cascii` will prompt you for them.
@@ -124,15 +126,44 @@ Columns: 400
 ````
 ![Test 4 output](resources/test_04.png)
 
+#### Test animation 1:
 
-# Test Image
+Reconstituting a few seconds from the clip [Aleph 2 by Max Cooper](https://www.youtube.com/watch?v=tNYfqklRehM) (around 2:30 to 3:00)
+
+```
+Frames: 960
+Luminance: 30
+Font Ratio: 0.7
+Columns: 400
+FPS: 30
+```
+
+![Demo](resources/demo_01.gif)
+
+#### Test animation 2:
+
+Reconstituting a few seconds from the clip [Repetition 2 by Max Cooper](https://www.youtube.com/watch?v=nO9aot9RgQc) (around 4:00 to 4:20)
+
+````
+Frames: 840
+Luminance: 35
+Font Ratio: 0.7
+Columns: 400
+FPS: 30
+````
+
+![Demo](resources/demo_02.gif)
+
+# Sample commands
+
+## Test Image
 
 ./target/release/ascii-gen \
   --input ./some_frames_dir \
   --out ../output/sunset_hl \
   --font-ratio 0.7
 
-# Test Video
+## Test Video
 
 ./target/release/ascii-gen \
   --input ../input.webm \
@@ -140,3 +171,7 @@ Columns: 400
   --columns 800 \
   --fps 30 \
   --font-ratio 0.7
+
+# Acknowledgements
+
+This project is inspired by [developedbyed's video](https://www.youtube.com/watch?v=dUV8pobjZII) that I recommend watching, I reused the logic from his bash script and rewrote it in rust so that it could process faster files with more details. 
