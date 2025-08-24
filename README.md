@@ -140,20 +140,6 @@ FPS: 30
 
 ![Demo](resources/demo_01.gif)
 
-#### Test animation 2:
-
-Reconstituting a few seconds from the clip [Repetition 2 by Max Cooper](https://www.youtube.com/watch?v=nO9aot9RgQc) (around 4:00 to 4:20)
-
-````
-Frames: 840
-Luminance: 35
-Font Ratio: 0.7
-Columns: 400
-FPS: 30
-````
-
-![Demo](resources/demo_02.gif)
-
 # Sample commands
 
 ## Test Image
