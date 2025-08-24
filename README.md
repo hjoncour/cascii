@@ -76,47 +76,53 @@ cascii my_video.mp4 --start 00:00:10 --end 00:00:15
 
 #### Source image:
 
-link to source.png
+![Source image](resources/source.png)
 
 #### Test 1:
 
 settings:
 
+````
 Luminance: 1
 Font Ratio: 0.7
 Columns: 400
-
-link to test_01.png
+````
+![Test 1 output](resources/test_01.png)
 
 #### Test 2:
 
 settings:
 
-Luminance: 1
+````
+Luminance: 35
 Font Ratio: 0.7
 Columns: 400
-
-link to test_02.png
+````
+![Test 2 output](resources/test_02.png)
 
 #### Test 3:
 
 settings:
 
-Luminance: 1
-Font Ratio: 0.7
+````
+Luminance: 35
+Font Ratio: 0.5
 Columns: 400
+````
 
-link to test_03.png
+![Test 3 output](resources/test_03.png)
 
-#### Test 3:
+#### Test 4:
 
 settings:
 
-Luminance: 1
-Font Ratio: 0.7
-Columns: 400
 
-link to test_04.png
+````
+Luminance: 35
+Font Ratio: 1
+Columns: 400
+````
+![Test 4 output](resources/test_04.png)
 
 
 # Test Image
