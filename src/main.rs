@@ -86,7 +86,13 @@ fn main() -> Result<()> {
         args.input = Some(PathBuf::from(&files[selection]));
     }
 
-    let input_path = args.input.unwrap();
+    let input_path = args.input.as_ref().unwrap();
+
+    let is_image_input = input_path.is_file()
+        && matches!(
+            input_path.extension().and_then(|s| s.to_str()),
+            Some("png" | "jpg" | "jpeg")
+        );
 
     let mut output_path = args.out.unwrap_or_else(|| PathBuf::from("."));
 
@@ -95,7 +101,7 @@ fn main() -> Result<()> {
         let file_stem = input_path
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("casci_output");
+            .unwrap_or("cascii_output");
         output_path.push(file_stem);
     }
 
@@ -110,57 +116,59 @@ fn main() -> Result<()> {
         (800, 30, 0.7)
     };
 
-    if args.columns.is_none() && is_interactive {
-        args.columns = Some(
-            Input::new()
-                .with_prompt("Columns (width)")
-                .default(default_cols)
-                .interact()?,
-        );
-    }
-
-    if input_path.is_file() && args.fps.is_none() && is_interactive {
-        args.fps = Some(
-            Input::new()
-                .with_prompt("Frames per second (FPS)")
-                .default(default_fps)
-                .interact()?,
-        );
-    }
-
-    if args.font_ratio.is_none() && is_interactive {
-        args.font_ratio = Some(
-            Input::new()
-                .with_prompt("Font Ratio")
-                .default(default_ratio)
-                .interact()?,
-        );
-    }
-
-    if args.luminance.is_none() && is_interactive {
-        args.luminance = Some(
-            Input::new()
-                .with_prompt("Luminance threshold")
-                .default(1u8)
-                .interact()?,
-        );
-    }
-
-    if input_path.is_file() && is_interactive {
-        if args.start.is_none() {
-            args.start = Some(
+    if is_interactive {
+        if args.columns.is_none() {
+            args.columns = Some(
                 Input::new()
-                    .with_prompt("Start time (e.g., 00:00:05)")
-                    .default("0".to_string())
+                    .with_prompt("Columns (width)")
+                    .default(default_cols)
                     .interact()?,
             );
         }
-        if args.end.is_none() {
-            args.end = Some(
+
+        if args.font_ratio.is_none() {
+            args.font_ratio = Some(
                 Input::new()
-                    .with_prompt("End time (e.g., 00:00:10) (optional)")
+                    .with_prompt("Font Ratio")
+                    .default(default_ratio)
                     .interact()?,
             );
+        }
+
+        if args.luminance.is_none() {
+            args.luminance = Some(
+                Input::new()
+                    .with_prompt("Luminance threshold")
+                    .default(1u8)
+                    .interact()?,
+            );
+        }
+
+        if !is_image_input {
+            // Video-specific prompts
+            if args.fps.is_none() {
+                args.fps = Some(
+                    Input::new()
+                        .with_prompt("Frames per second (FPS)")
+                        .default(default_fps)
+                        .interact()?,
+                );
+            }
+            if args.start.is_none() {
+                args.start = Some(
+                    Input::new()
+                        .with_prompt("Start time (e.g., 00:00:05)")
+                        .default("0".to_string())
+                        .interact()?,
+                );
+            }
+            if args.end.is_none() {
+                args.end = Some(
+                    Input::new()
+                        .with_prompt("End time (e.g., 00:00:10) (optional)")
+                        .interact()?,
+                );
+            }
         }
     }
 
@@ -211,6 +219,17 @@ fn main() -> Result<()> {
     }
 
     if input_path.is_file() {
+        if is_image_input {
+            return process_single_image(
+                &input_path,
+                &output_path,
+                columns,
+                font_ratio,
+                luminance,
+                args.log_details,
+            );
+        }
+
         run_ffmpeg_extract(
             &input_path,
             &output_path,
@@ -254,7 +273,7 @@ fn main() -> Result<()> {
         frame_count, luminance, font_ratio, columns
     );
 
-    if input_path.is_file() {
+    if input_path.is_file() && !is_image_input {
         details.push_str(&format!("\nFPS: {}", fps));
     }
 
@@ -266,6 +285,46 @@ fn main() -> Result<()> {
         println!("{}", details);
     }
     
+    Ok(())
+}
+
+fn process_single_image(
+    input_path: &Path,
+    output_path: &Path,
+    columns: u32,
+    font_ratio: f32,
+    luminance: u8,
+    log_details: bool,
+) -> Result<()> {
+    let file_stem = input_path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("ascii_art");
+    let out_txt = output_path.join(format!("{}.txt", file_stem));
+
+    println!("Converting image to ASCII...");
+    convert_image_to_ascii(
+        input_path,
+        &out_txt,
+        font_ratio,
+        luminance,
+        Some(columns),
+    )?;
+
+    println!("\nASCII generation complete in {}", output_path.display());
+
+    let details = format!(
+        "Luminance: {}\nFont Ratio: {}\nColumns: {}",
+        luminance, font_ratio, columns
+    );
+    let details_path = output_path.join("details.md");
+    fs::write(details_path, &details).context("writing details file")?;
+
+    if log_details {
+        println!("\n--- Generation Details ---");
+        println!("{}", details);
+    }
+
     Ok(())
 }
 
@@ -382,7 +441,7 @@ fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, th
                 .and_then(|s| s.to_str())
                 .ok_or_else(|| anyhow!("bad file name"))?;
             let out_txt = dst_dir.join(format!("{}.txt", file_stem));
-            convert_image_to_ascii(img_path, &out_txt, font_ratio, threshold)
+            convert_image_to_ascii(img_path, &out_txt, font_ratio, threshold, None)
         })?;
 
     if !keep_images {
@@ -394,8 +453,25 @@ fn convert_dir_pngs_parallel(src_dir: &Path, dst_dir: &Path, font_ratio: f32, th
     Ok(())
 }
 
-fn convert_image_to_ascii(img_path: &Path, out_txt: &Path, font_ratio: f32, threshold: u8) -> Result<()> {
-    let mut img = image::open(img_path).with_context(|| format!("opening {}", img_path.display()))?.to_rgb8();
+fn convert_image_to_ascii(
+    img_path: &Path,
+    out_txt: &Path,
+    font_ratio: f32,
+    threshold: u8,
+    columns: Option<u32>,
+) -> Result<()> {
+    let mut img = image::open(img_path)
+        .with_context(|| format!("opening {}", img_path.display()))?
+        .to_rgb8();
+
+    if let Some(new_w) = columns {
+        let (w, h) = img.dimensions();
+        if new_w != w {
+            let new_h = (h as f32 * (new_w as f32 / w as f32)).round() as u32;
+            img = image::imageops::resize(&img, new_w, new_h, image::imageops::FilterType::Triangle);
+        }
+    }
+
     let (w, h) = img.dimensions();
     let new_h = ((h as f32) * font_ratio).max(1.0).round() as u32;
     if new_h != h {

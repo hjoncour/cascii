@@ -36,6 +36,8 @@ target
 /tests/video/output/large/*.md
 /tests/video/output/default/test/*.txt
 
-# React app build output
-/casci-demo/build
-/casci-demo/node_modules
+/tests/video/output/expected/**/*.txt
+
+/tests/video/output/default/**/*.txt
+/tests/video/output/small/**/*.txt
+/tests/video/output/large/**/*.txt
